@@ -5,7 +5,7 @@ import com.swin.bean.Message;
 import com.swin.constant.MessageIdentify;
 import com.swin.utils.CoderUtils;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 
@@ -14,7 +14,7 @@ public class MessageEncoder extends MessageToByteEncoder<Object> {
     protected void encode(ChannelHandlerContext channelHandlerContext, Object o, ByteBuf out) throws Exception {
         if (o instanceof Message) {
             Message message = (Message) o;
-            ByteBuf buf = Unpooled.buffer();
+            ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer();
             Integer len = 0;
             buf.writeInt(len);
             Integer identify = message.getIdentify();

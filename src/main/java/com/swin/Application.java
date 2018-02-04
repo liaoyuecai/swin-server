@@ -4,6 +4,7 @@ import com.swin.common.SwinServer;
 import com.swin.db.MapDBFactory;
 import com.swin.exception.ServerStartException;
 import com.swin.manager.ConditionLock;
+import com.swin.server.DBBackups;
 import com.swin.server.ParamsLoader;
 import com.swin.server.ServerThreadPool;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ public class Application {
         MapDBFactory.init();
         ServerThreadPool.init();
         SwinServer.init(ParamsLoader.getPort());
+        DBBackups.init();
         boolean flag = (boolean) ConditionLock.getInstance().await("server_start", 30000);
         if (flag) {
             logger.info("Server has been started");
