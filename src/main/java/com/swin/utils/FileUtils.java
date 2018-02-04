@@ -1,13 +1,10 @@
 package com.swin.utils;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 
 public class FileUtils {
     public static void copyFile(String fromFile, String toFile) throws IOException {
-        FileInputStream ins = new FileInputStream(fromFile);
+        RandomAccessFile ins = new RandomAccessFile(fromFile, "r");
         File file = createFile(toFile);
         FileOutputStream out = new FileOutputStream(file);
         byte[] b = new byte[1024];

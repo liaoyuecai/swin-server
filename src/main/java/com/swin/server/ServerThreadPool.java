@@ -5,10 +5,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class ServerThreadPool {
-
     private static ThreadPoolTaskExecutor executor;
 
-    public static void init() {
+    static {
         executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(5);
         executor.setMaxPoolSize(300);

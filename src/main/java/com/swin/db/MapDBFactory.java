@@ -1,6 +1,7 @@
 package com.swin.db;
 
 import com.swin.server.ParamsLoader;
+import com.swin.server.ServerThreadPool;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -12,28 +13,66 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MapDBFactory {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final static Logger logger = LoggerFactory.getLogger(MapDBFactory.class);
 
     private static DB db;
+    private static DB backups;
+
+    private static final long COMMIT_INTERVAL = 1 * 60 * 60 * 1000;
 
     private static Map<String, BTreeMap<String, byte[]>> cacheTree;
 
-    public synchronized static void init() {
-        if (db == null) {
-            cacheTree = new ConcurrentHashMap<>();
-            File file = new File(ParamsLoader.getDbDirectory() + "/mapDB.db");
+    static {
+        cacheTree = new ConcurrentHashMap<>();
+        db = DBMaker
+                .memoryDB().closeOnJvmShutdownWeakReference()
+                .make();
+    }
+
+
+    public synchronized static void init() throws Exception {
+        File file = new File(ParamsLoader.getDbDirectory() + "/mapDB.db");
+        if (file.exists()) {
+            backups = DBMaker
+                    .fileDB(file).closeOnJvmShutdownWeakReference()
+                    .make();
+            Map map = null;
+            Map srcMap = null;
+            for (String treeName : backups.getAllNames()) {
+                srcMap = backups.treeMap(treeName).open();
+                if (db.exists(treeName)) {
+                    map = db.treeMap(treeName).open();
+                } else {
+                    map = db.treeMap(treeName).create();
+                }
+                map.putAll(srcMap);
+            }
+        } else {
             if (!file.getParentFile().exists()) {
                 file.getParentFile().mkdirs();
             }
-            db = DBMaker
-                    .fileDB(file).closeOnJvmShutdown()
+            backups = DBMaker
+                    .fileDB(file).closeOnJvmShutdownWeakReference()
                     .make();
-            BTreeMap<String, byte[]> treeMap = null;
-            for (String treeName : db.getAllNames()) {
-                treeMap = (BTreeMap<String, byte[]>) db.treeMap(treeName).open();
-                cacheTree.put(treeName, treeMap);
-            }
         }
+        BTreeMap<String, byte[]> treeMap = null;
+        for (String treeName : db.getAllNames()) {
+            treeMap = (BTreeMap<String, byte[]>) db.treeMap(treeName).open();
+            cacheTree.put(treeName, treeMap);
+        }
+        ServerThreadPool.execute(new Thread() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        commit();
+                        Thread.sleep(COMMIT_INTERVAL);
+                    } catch (Exception e) {
+                        logger.error("map db commit error", e);
+                    }
+                }
+            }
+        });
     }
 
     /**
@@ -77,12 +116,19 @@ public class MapDBFactory {
     }
 
 
-    public static void commit() {
+    private static void commit() throws Exception {
+        Map map = null;
+        Map srcMap = null;
         for (String tree : cacheTree.keySet()) {
-            cacheTree.get(tree).close();
+            srcMap = cacheTree.get(tree);
+            if (backups.exists(tree)) {
+                map = backups.treeMap(tree).open();
+            } else {
+                map = backups.treeMap(tree).create();
+            }
+            map.putAll(srcMap);
         }
-        db.commit();
-        db.close();
-        init();
+        backups.commit();
     }
+
 }
