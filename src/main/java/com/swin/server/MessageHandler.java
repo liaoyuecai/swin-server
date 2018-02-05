@@ -1,19 +1,19 @@
-package com.swin.server.netty.factory;
+package com.swin.server;
 
 import com.swin.bean.MapData;
 import com.swin.bean.Message;
-import com.swin.constant.MessageIdentify;
-import com.swin.db.MapDBFactory;
-import com.swin.manager.SubscriberManager;
 import com.swin.utils.CoderUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class MessageHandler extends ChannelInboundHandlerAdapter {
+class MessageHandler extends ChannelInboundHandlerAdapter {
+    final static Logger logger = LoggerFactory.getLogger(MapDBFactory.class);
 
-    private String clientId;
+    String clientId;
 
-    private Integer clientType;
+    Integer clientType;
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -23,7 +23,7 @@ public class MessageHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         super.channelInactive(ctx);
-        SubscriberManager.getInstance().disconnect(clientId, clientType);
+        ClientManager.disconnect(clientId);
     }
 
     @Override
@@ -36,16 +36,17 @@ public class MessageHandler extends ChannelInboundHandlerAdapter {
                 if (this.clientId == null) {
                     this.clientId = message.getClientId();
                     this.clientType = identify;
-                    SubscriberManager.getInstance().initReceiver(clientId, clientType, ctx.channel());
+                    ctx.channel().writeAndFlush(ClientManager.register(clientId, clientType, ctx.channel()));
                 }
                 break;
             case MessageIdentify.PUT_TREE_MAP_DATA:
-                long a = System.currentTimeMillis();
-                ctx.channel().writeAndFlush(putTreeMapData(message.getUuid(), (MapData) message.getData()));
-                long b = System.currentTimeMillis() -a ;
+                ctx.channel().writeAndFlush(putTreeMapData(message));
                 break;
             case MessageIdentify.GET_TREE_MAP_DATA:
-                ctx.channel().writeAndFlush(getTreeMapData(message.getUuid(), (MapData) message.getData()));
+                ctx.channel().writeAndFlush(getTreeMapData(message));
+                break;
+            case MessageIdentify.DELETE_TREE_MAP_DATA:
+                ctx.channel().writeAndFlush(deleteTreeMapData(message));
                 break;
             case MessageIdentify.SUBSCRIBE_INIT:
 
@@ -53,10 +54,21 @@ public class MessageHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    private Message putTreeMapData(String id, MapData data) {
-        Message message = new Message();
-        message.setClientId(clientId);
-        message.setUuid(id);
+    private Object deleteTreeMapData(Message message) {
+        MapData data = (MapData) message.getData();
+        try {
+            MapDBFactory.remove(data.getTree(), data.getKey());
+            message.setIdentify(MessageIdentify.DELETE_TREE_MAP_DATA_OK);
+            data.setValue(null);
+        } catch (Exception e) {
+            message.setIdentify(MessageIdentify.DELETE_TREE_MAP_DATA_FAILED);
+            data.setValue(CoderUtils.getBytes("Delete message exception, " + e.getMessage()));
+        }
+        return message;
+    }
+
+    private Message putTreeMapData(Message message) {
+        MapData data = (MapData) message.getData();
         try {
             MapDBFactory.addOrUpdate(data.getTree(), data.getKey(), data.getValue());
             message.setIdentify(MessageIdentify.PUT_TREE_MAP_DATA_OK);
@@ -65,14 +77,11 @@ public class MessageHandler extends ChannelInboundHandlerAdapter {
             message.setIdentify(MessageIdentify.PUT_TREE_MAP_DATA_FAILED);
             data.setValue(CoderUtils.getBytes("Put message exception, " + e.getMessage()));
         }
-        message.setData(data);
         return message;
     }
 
-    private Message getTreeMapData(String id, MapData data) {
-        Message message = new Message();
-        message.setClientId(clientId);
-        message.setUuid(id);
+    private Message getTreeMapData(Message message) {
+        MapData data = (MapData) message.getData();
         try {
             data.setValue(MapDBFactory.getDataByTreeAndKey(data.getTree(), data.getKey()));
             message.setIdentify(MessageIdentify.GET_TREE_MAP_DATA_OK);
@@ -80,14 +89,14 @@ public class MessageHandler extends ChannelInboundHandlerAdapter {
             message.setIdentify(MessageIdentify.GET_TREE_MAP_DATA_FAILED);
             data.setValue(CoderUtils.getBytes("Get message exception, " + e.getMessage()));
         }
-        message.setData(data);
         return message;
     }
 
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-        super.userEventTriggered(ctx, evt);
+        logger.error("Client :" + clientId + " timeout , client is closing");
+        ctx.channel().close();
     }
 
     @Override

@@ -1,29 +1,23 @@
-package com.swin.manager;
+package com.swin.server;
 
 import com.swin.bean.Consumer;
 import com.swin.bean.Listener;
 import com.swin.bean.Message;
-import com.swin.constant.MessageIdentify;
 import io.netty.channel.Channel;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SubscriberManager {
-    private static SubscriberManager manager = new SubscriberManager();
-    private Map<String, Listener> mapSubscriber;
-    private Map<String, Consumer> queueSubscriber;
+class SubscriberManager {
+    static Map<String, Listener> mapSubscriber;
+    static Map<String, Consumer> queueSubscriber;
 
-    private SubscriberManager() {
-        this.mapSubscriber = new ConcurrentHashMap<>();
-        this.queueSubscriber = new ConcurrentHashMap<>();
+    static {
+        mapSubscriber = new ConcurrentHashMap<>();
+        queueSubscriber = new ConcurrentHashMap<>();
     }
 
-    public static SubscriberManager getInstance() {
-        return manager;
-    }
-
-    public void initReceiver(String clientName, Integer clientType, Channel channel) {
+    static void initReceiver(String clientName, Integer clientType, Channel channel) {
         Message message = new Message();
         switch (clientType) {
             case 0:
@@ -48,7 +42,7 @@ public class SubscriberManager {
         channel.writeAndFlush(message);
     }
 
-    public void disconnect(String clientName, Integer clientType) {
+    static void disconnect(String clientName, Integer clientType) {
         switch (clientType) {
             case 0:
                 mapSubscriber.get(clientName).disconnect();

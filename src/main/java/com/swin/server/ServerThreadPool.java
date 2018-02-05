@@ -4,8 +4,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.ThreadPoolExecutor;
 
-public class ServerThreadPool {
-    private static ThreadPoolTaskExecutor executor;
+class ServerThreadPool {
+    static ThreadPoolTaskExecutor executor;
 
     static {
         executor = new ThreadPoolTaskExecutor();
@@ -18,11 +18,11 @@ public class ServerThreadPool {
     }
 
 
-    public static void execute(Runnable runnable) {
+    static void execute(Runnable runnable) {
         executor.execute(runnable);
     }
 
-    public static void submit(Runnable runnable) {
+    static void submit(Runnable runnable) {
         executor.submit(runnable);
     }
 

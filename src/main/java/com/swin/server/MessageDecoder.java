@@ -1,17 +1,15 @@
-package com.swin.server.netty.factory;
+package com.swin.server;
 
 import com.swin.bean.MapData;
 import com.swin.bean.Message;
-import com.swin.constant.MessageIdentify;
 import com.swin.utils.CoderUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 
 import java.util.List;
-import java.util.Map;
 
-public class MessageDecoder extends ByteToMessageDecoder {
+class MessageDecoder extends ByteToMessageDecoder {
 
 
     @Override
@@ -30,6 +28,10 @@ public class MessageDecoder extends ByteToMessageDecoder {
         switch (identify) {
             case MessageIdentify.GET_TREE_MAP_DATA:
             case MessageIdentify.PUT_TREE_MAP_DATA:
+            case MessageIdentify.LISTEN_TREE:
+            case MessageIdentify.LISTEN_MAP:
+            case MessageIdentify.UN_LISTEN_TREE:
+            case MessageIdentify.UN_LISTEN_MAP:
                 MapData data = new MapData();
                 Integer treeLen = CoderUtils.getShort(buf);
                 data.setTree(CoderUtils.getString(buf, treeLen));

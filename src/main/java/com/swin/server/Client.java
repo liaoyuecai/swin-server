@@ -1,28 +1,34 @@
-package com.swin.bean;
+package com.swin.server;
 
 import io.netty.channel.Channel;
 import lombok.Data;
 
-import java.io.Serializable;
-
+/**
+ * Created by LiaoYuecai on 2018/2/5.
+ */
 @Data
-public abstract class Receiver implements Serializable {
-    public static final int CONSUMER = 0;
-    public static final int LISTENER = 1;
-    protected String clientId;
-    protected Channel channel;
-    protected boolean alive;
-    protected long disconnectTime;
+class Client {
+
+    String id;
+    //0: tree;1: queue
+    Integer connectType;
+
+    Channel channel;
+
+    boolean alive;
+
+    long disconnectTime;
 
 
-    public Receiver(String clientId, Channel channel) {
-        this.clientId = clientId;
+    public Client(String id, Integer connectType, Channel channel) {
+        this.id = id;
+        this.connectType = connectType;
         this.channel = channel;
-        this.alive = true;
     }
 
     public void disconnect() {
         this.alive = false;
+        this.channel = null;
         this.disconnectTime = System.currentTimeMillis();
     }
 
@@ -37,5 +43,4 @@ public abstract class Receiver implements Serializable {
             return time - this.disconnectTime;
         }
     }
-
 }

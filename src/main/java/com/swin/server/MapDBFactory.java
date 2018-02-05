@@ -1,7 +1,5 @@
-package com.swin.db;
+package com.swin.server;
 
-import com.swin.server.ParamsLoader;
-import com.swin.server.ServerThreadPool;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -12,15 +10,15 @@ import java.io.File;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class MapDBFactory {
-    private final static Logger logger = LoggerFactory.getLogger(MapDBFactory.class);
+class MapDBFactory {
+    final static Logger logger = LoggerFactory.getLogger(MapDBFactory.class);
 
-    private static DB db;
-    private static DB backups;
+    static DB db;
+    static DB backups;
 
-    private static final long COMMIT_INTERVAL = 1 * 60 * 60 * 1000;
+    static final long COMMIT_INTERVAL = 1 * 60 * 60 * 1000;
 
-    private static Map<String, BTreeMap<String, byte[]>> cacheTree;
+    static Map<String, BTreeMap<String, byte[]>> cacheTree;
 
     static {
         cacheTree = new ConcurrentHashMap<>();
@@ -30,7 +28,7 @@ public class MapDBFactory {
     }
 
 
-    public synchronized static void init() throws Exception {
+    static void init() throws Exception {
         File file = new File(ParamsLoader.getDbDirectory() + "/mapDB.db");
         if (file.exists()) {
             backups = DBMaker
@@ -82,7 +80,7 @@ public class MapDBFactory {
      * @param key
      * @param data
      */
-    public static void addOrUpdate(String treeName, String key, byte[] data) {
+    static void addOrUpdate(String treeName, String key, byte[] data) {
         if (cacheTree.containsKey(treeName)) {
             cacheTree.get(treeName).put(key, data);
         } else {
@@ -95,6 +93,7 @@ public class MapDBFactory {
             treeMap.put(key, data);
             cacheTree.put(treeName, treeMap);
         }
+        ClientManager.informTree(treeName, ClientManager.LISTEN_OPERATE.UPDATE, key, data);
     }
 
     /**
@@ -103,11 +102,14 @@ public class MapDBFactory {
      * @param treeName
      * @param mapKey
      */
-    public static void remove(String treeName, String mapKey) {
+    static void remove(String treeName, String mapKey) {
+        if (cacheTree.containsKey(treeName) && cacheTree.get(treeName).containsKey(mapKey)) {
+            ClientManager.informTree(treeName, ClientManager.LISTEN_OPERATE.DELETE, mapKey, cacheTree.get(treeName).get(mapKey));
+        }
         cacheTree.get(treeName).remove(mapKey);
     }
 
-    public static byte[] getDataByTreeAndKey(String treeName, String mapKey) {
+    static byte[] getDataByTreeAndKey(String treeName, String mapKey) {
         if (cacheTree.containsKey(treeName)) {
             return cacheTree.get(treeName).get(mapKey);
         } else {
@@ -116,7 +118,7 @@ public class MapDBFactory {
     }
 
 
-    private static void commit() throws Exception {
+    static void commit() throws Exception {
         Map map = null;
         Map srcMap = null;
         for (String tree : cacheTree.keySet()) {

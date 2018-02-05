@@ -7,10 +7,10 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
 
-public class ParamsLoader {
+class ParamsLoader {
 
-    private static String dbDirectory;
-    private static Integer port;
+    static String dbDirectory;
+    static Integer port;
 
     static {
         try {
@@ -40,12 +40,12 @@ public class ParamsLoader {
         }
     }
 
-    public static String getDbDirectory() {
+    static String getDbDirectory() {
         return dbDirectory;
     }
 
 
-    public static Integer getPort() {
+    static Integer getPort() {
         return port;
     }
 }
